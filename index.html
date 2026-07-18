@@ -289,7 +289,7 @@
       <div class="step" data-step="6">
         <div class="step-eyebrow">Step 5 of 6</div>
         <h2>Your ready-to-post content</h2>
-        <p class="step-sub">Copy each one straight into Mailchimp, Instagram, Facebook, or LinkedIn. Swap in your real RSVP link once your Eventbrite/Partiful page is live.</p>
+        <p class="step-sub">Copy each one straight into Instagram or Facebook, and send the newsletter blurb to OC Cal. Swap in your real RSVP link once your Eventbrite/Partiful page is live.</p>
 
         <div class="grant-box" id="graphicBox"></div>
 
@@ -640,7 +640,6 @@
     var emailText = buildEmailBlurb(s);
     var igText = buildInstagramCaption(s);
     var fbText = buildFacebookPost(s);
-    var liText = buildLinkedInPost(s);
     var emailSubject = encodeURIComponent('Newsletter blurb: ' + s.name);
     var emailComposeUrl = 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(CLUB_RECORDS_EMAIL) +
       '&su=' + emailSubject + '&body=' + encodeURIComponent(emailText);
@@ -652,10 +651,7 @@
         linkUrl: 'https://www.instagram.com/occalalumni/', linkLabel: 'Open @occalalumni' },
       { title: 'Facebook Post', text: fbText,
         linkUrl: 'https://business.facebook.com/latest/composer', linkLabel: 'Post via Meta Business Suite',
-        footnote: 'Cross-post to both: <a href="https://www.facebook.com/OCCalAlumni" target="_blank" rel="noopener">OC Cal Alumni Page</a> and the <a href="https://www.facebook.com/groups/occalalum" target="_blank" rel="noopener">public group</a>.' },
-      { title: 'LinkedIn Post (for networking/professional events)', text: liText,
-        linkUrl: 'https://www.linkedin.com/feed/?shareActive=true&text=' + encodeURIComponent(liText),
-        linkLabel: 'Open LinkedIn (prefilled)' }
+        footnote: 'Cross-post to both: <a href="https://www.facebook.com/OCCalAlumni" target="_blank" rel="noopener">OC Cal Alumni Page</a> and the <a href="https://www.facebook.com/groups/occalalum" target="_blank" rel="noopener">public group</a>.' }
     ];
     var container = document.getElementById('contentBlocks');
     container.innerHTML = '';
@@ -841,9 +837,6 @@
     lines.push('');
     lines.push('=== FACEBOOK POST ===');
     lines.push(buildFacebookPost(s));
-    lines.push('');
-    lines.push('=== LINKEDIN POST ===');
-    lines.push(buildLinkedInPost(s));
     lines.push('');
     lines.push('— Generated via OC Cal Alumni Club Self-Serve Event Planner —');
     return lines.join('\n');
