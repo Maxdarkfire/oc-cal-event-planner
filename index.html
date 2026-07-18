@@ -310,7 +310,7 @@
         <p class="hint" id="icsHint" style="margin-top:8px;"></p>
 
         <div class="action-row">
-          <a class="btn-secondary" id="recordEmailBtn" href="#" style="text-decoration:none; display:inline-flex; align-items:center;">📧 Email a copy to OC Cal (for records)</a>
+          <a class="btn-secondary" id="recordEmailBtn" href="#" target="_blank" rel="noopener" style="text-decoration:none; display:inline-flex; align-items:center;">📧 Email a copy to OC Cal (for records)</a>
         </div>
         <p class="hint">Optional — sends a copy to occalalum@gmail.com for club tracking. Nothing here waits on anyone; you've already got everything you need above.</p>
 
@@ -867,7 +867,11 @@
         var s = currentSummaryLines();
         var subject = encodeURIComponent('Event Record: ' + s.name);
         var body = encodeURIComponent(buildPacketText(s));
-        recordBtn.setAttribute('href', 'mailto:' + CLUB_RECORDS_EMAIL + '?subject=' + subject + '&body=' + body);
+        // Gmail's web compose window — more reliable than mailto: for people without
+        // a desktop mail app configured (most Gmail-only users hit that with mailto:).
+        var gmailComposeUrl = 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(CLUB_RECORDS_EMAIL) +
+          '&su=' + subject + '&body=' + body;
+        recordBtn.setAttribute('href', gmailComposeUrl);
       };
     }
   }
