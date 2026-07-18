@@ -637,12 +637,17 @@
   function buildContent() {
     var s = currentSummaryLines();
     renderGraphicBox(s);
+    var emailText = buildEmailBlurb(s);
     var igText = buildInstagramCaption(s);
     var fbText = buildFacebookPost(s);
     var liText = buildLinkedInPost(s);
+    var emailSubject = encodeURIComponent('Newsletter blurb: ' + s.name);
+    var emailComposeUrl = 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(CLUB_RECORDS_EMAIL) +
+      '&su=' + emailSubject + '&body=' + encodeURIComponent(emailText);
     var blocks = [
-      { title: 'Email Newsletter Blurb', text: buildEmailBlurb(s),
-        linkUrl: 'https://login.mailchimp.com/', linkLabel: 'Open Mailchimp' },
+      { title: 'Email Newsletter Blurb', text: emailText,
+        linkUrl: emailComposeUrl, linkLabel: 'Send to OC Cal for newsletter',
+        footnote: 'You don\'t have Mailchimp access — once your event is booked (RSVP link live), send this blurb to occalalum@gmail.com so it can be added to the next newsletter.' },
       { title: 'Instagram Caption', text: igText,
         linkUrl: 'https://www.instagram.com/occalalumni/', linkLabel: 'Open @occalalumni' },
       { title: 'Facebook Post', text: fbText,
