@@ -255,6 +255,11 @@
 
         <div id="platformRecs"></div>
 
+        <div id="rsvpLinkField" style="display:none;">
+          <label>Paste your RSVP/ticket link here once it's live <span class="opt">(this auto-fills into your email + social content below)</span></label>
+          <input type="text" id="rsvpLink" placeholder="https://www.eventbrite.com/e/... or https://partiful.com/e/...">
+        </div>
+
         <label style="margin-top:24px;">Will this event need club/CAA funding beyond what's already budgeted? <span class="opt">(venue rental, catering, big-ticket items)</span></label>
         <div class="choice-group" id="needsFundingGroup">
           <button type="button" class="choice-btn" data-value="Yes">Yes, needs funding</button>
@@ -275,6 +280,7 @@
         </div>
         <div class="action-row">
           <button type="button" class="btn-secondary" id="icsBtnTimeline">📅 Download calendar invite (.ics)</button>
+          <a class="btn-secondary" id="gcalBtnTimeline" href="#" target="_blank" rel="noopener" style="text-decoration:none; display:inline-flex; align-items:center;">📆 Add to Google Calendar</a>
         </div>
         <p class="hint" id="icsHintTimeline" style="margin-top:8px;"></p>
       </div>
@@ -299,8 +305,14 @@
         <div class="action-row">
           <button type="button" class="btn-secondary" id="downloadBtn">⬇️ Download full packet as text</button>
           <button type="button" class="btn-secondary" id="icsBtn">📅 Download calendar invite (.ics)</button>
+          <a class="btn-secondary" id="gcalBtn" href="#" target="_blank" rel="noopener" style="text-decoration:none; display:inline-flex; align-items:center;">📆 Add to Google Calendar</a>
         </div>
         <p class="hint" id="icsHint" style="margin-top:8px;"></p>
+
+        <div class="action-row">
+          <a class="btn-secondary" id="recordEmailBtn" href="#" style="text-decoration:none; display:inline-flex; align-items:center;">📧 Email a copy to OC Cal (for records)</a>
+        </div>
+        <p class="hint">Optional — sends a copy to occalalum@gmail.com for club tracking. Nothing here waits on anyone; you've already got everything you need above.</p>
 
         <div class="celebrate">
           <div class="bear">🐻🎉</div>
@@ -403,10 +415,13 @@
         '<a class="platform-link" href="' + PARTIFUL_URL + '" target="_blank" rel="noopener">Create event →</a>' +
       '</div>';
 
+    var linkField = document.getElementById('rsvpLinkField');
     if (t === 'No RSVP needed') {
       box.innerHTML = '<p class="hint" style="margin-top:10px;">No registration platform needed — just make sure the date, time, and location are nailed down for your promo content.</p>';
+      linkField.style.display = 'none';
     } else {
       box.innerHTML = eventbriteCard + partifulCard;
+      linkField.style.display = 'block';
     }
   }
 
@@ -443,7 +458,7 @@
     }
 
     if (n === 3) renderShortTimelineWarning();
-    if (n === 5) { buildTimeline(); wireIcs('icsBtnTimeline', 'icsHintTimeline'); }
+    if (n === 5) { buildTimeline(); wireIcs('icsBtnTimeline', 'icsHintTimeline', 'gcalBtnTimeline'); }
     if (n === 6) buildContent();
     if (n === 7) wireDownload();
   }
@@ -567,7 +582,8 @@
     var cost = val('eventCost') || 'Free';
     var name = val('eventName') || 'Untitled Event';
     var desc = val('eventDesc') || '';
-    var rsvpPlaceholder = data.rsvpType === 'No RSVP needed' ? '' : '[ADD YOUR RSVP/TICKET LINK HERE]';
+    var pastedLink = val('rsvpLink');
+    var rsvpPlaceholder = data.rsvpType === 'No RSVP needed' ? '' : (pastedLink || '[ADD YOUR RSVP/TICKET LINK HERE]');
     return { name: name, dateDisplay: dateDisplay, timeDisplay: timeDisplay, loc: loc, cost: cost, desc: desc, rsvpPlaceholder: rsvpPlaceholder };
   }
 
@@ -679,12 +695,41 @@
     return d.getUTCFullYear() + pad(d.getUTCMonth()+1) + pad(d.getUTCDate()) + 'T' + pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + '00Z';
   }
 
-  function buildIcsFile(s) {
+  function getEventStartEnd() {
     var eventDateStr = val('eventDate');
     if (!eventDateStr) return null;
     var timeStr = val('eventTime') || '18:00';
     var start = new Date(eventDateStr + 'T' + timeStr + ':00');
     var end = new Date(start.getTime() + 2 * 60 * 60 * 1000); // default 2-hour duration
+    return { start: start, end: end };
+  }
+
+  function buildGoogleCalendarUrl(s) {
+    var se = getEventStartEnd();
+    if (!se) return null;
+    var descLines = [];
+    if (s.desc) descLines.push(s.desc);
+    descLines.push('Cost: ' + s.cost);
+    if (s.rsvpPlaceholder) descLines.push('RSVP: ' + s.rsvpPlaceholder);
+    var poc = val('poc');
+    if (poc) descLines.push('Point of contact: ' + poc);
+    descLines.push('Hosted by the Orange County Cal Alumni Club — Go Bears!');
+    var details = descLines.join('\n');
+    var dates = toIcsDate(se.start) + '/' + toIcsDate(se.end);
+    var params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: s.name,
+      dates: dates,
+      details: details,
+      location: s.loc
+    });
+    return 'https://calendar.google.com/calendar/render?' + params.toString();
+  }
+
+  function buildIcsFile(s) {
+    var se = getEventStartEnd();
+    if (!se) return null;
+    var start = se.start, end = se.end;
 
     var descLines = [];
     if (s.desc) descLines.push(s.desc);
@@ -716,16 +761,18 @@
     return ics;
   }
 
-  function wireIcs(btnId, hintId) {
+  function wireIcs(btnId, hintId, gcalId) {
     btnId = btnId || 'icsBtn';
     hintId = hintId || 'icsHint';
+    gcalId = gcalId || 'gcalBtn';
     var hint = document.getElementById(hintId);
     var btn = document.getElementById(btnId);
+    var gcalBtn = document.getElementById(gcalId);
     if (!btn) return;
     if (!val('eventDate')) {
       hint.textContent = 'Add an event date back in Step 2 to enable the calendar invite download.';
     } else {
-      hint.textContent = 'Downloads a .ics file — double-click it to add the event straight to Google Calendar, Outlook, or Apple Calendar.';
+      hint.textContent = 'Downloads a .ics file (Outlook/Apple Calendar) or add it straight to Google Calendar.';
     }
     btn.onclick = function() {
       var s2 = currentSummaryLines();
@@ -745,43 +792,63 @@
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     };
+    if (gcalBtn) {
+      var s3 = currentSummaryLines();
+      var gcalUrl = buildGoogleCalendarUrl(s3);
+      gcalBtn.setAttribute('href', gcalUrl || '#');
+      gcalBtn.onclick = function(e) {
+        var freshUrl = buildGoogleCalendarUrl(currentSummaryLines());
+        if (!freshUrl) {
+          e.preventDefault();
+          alert('Add an event date first (Step 2) so we can build the calendar link.');
+          return;
+        }
+        gcalBtn.setAttribute('href', freshUrl);
+      };
+    }
+  }
+
+  var CLUB_RECORDS_EMAIL = "occalalum@gmail.com";
+
+  function buildPacketText(s) {
+    var lines = [];
+    lines.push('EVENT PACKET — OC Cal Alumni Club');
+    lines.push('Generated: ' + formatDate(new Date()));
+    lines.push('');
+    lines.push('=== EVENT BRIEF ===');
+    lines.push('Name: ' + s.name);
+    lines.push('Type: ' + (data.eventType || '[not selected]'));
+    lines.push('Description: ' + (s.desc || '[not provided]'));
+    lines.push('Date: ' + s.dateDisplay);
+    lines.push('Time: ' + s.timeDisplay);
+    lines.push('Location: ' + s.loc);
+    lines.push('Cost: ' + s.cost);
+    lines.push('Capacity: ' + (val('eventCapacity') || '[none / not limited]'));
+    lines.push('Point of Contact: ' + (val('poc') || '[not provided]'));
+    lines.push('Registration approach: ' + (data.rsvpType || '[not selected]'));
+    lines.push('Needs CAA funding: ' + (data.needsFunding || '[not selected]'));
+    lines.push('');
+    lines.push('=== EMAIL BLURB ===');
+    lines.push(buildEmailBlurb(s));
+    lines.push('');
+    lines.push('=== INSTAGRAM CAPTION ===');
+    lines.push(buildInstagramCaption(s));
+    lines.push('');
+    lines.push('=== FACEBOOK POST ===');
+    lines.push(buildFacebookPost(s));
+    lines.push('');
+    lines.push('=== LINKEDIN POST ===');
+    lines.push(buildLinkedInPost(s));
+    lines.push('');
+    lines.push('— Generated via OC Cal Alumni Club Self-Serve Event Planner —');
+    return lines.join('\n');
   }
 
   function wireDownload() {
-    wireIcs('icsBtn', 'icsHint');
+    wireIcs('icsBtn', 'icsHint', 'gcalBtn');
     document.getElementById('downloadBtn').onclick = function() {
       var s = currentSummaryLines();
-      var lines = [];
-      lines.push('EVENT PACKET — OC Cal Alumni Club');
-      lines.push('Generated: ' + formatDate(new Date()));
-      lines.push('');
-      lines.push('=== EVENT BRIEF ===');
-      lines.push('Name: ' + s.name);
-      lines.push('Type: ' + (data.eventType || '[not selected]'));
-      lines.push('Description: ' + (s.desc || '[not provided]'));
-      lines.push('Date: ' + s.dateDisplay);
-      lines.push('Time: ' + s.timeDisplay);
-      lines.push('Location: ' + s.loc);
-      lines.push('Cost: ' + s.cost);
-      lines.push('Capacity: ' + (val('eventCapacity') || '[none / not limited]'));
-      lines.push('Point of Contact: ' + (val('poc') || '[not provided]'));
-      lines.push('Registration approach: ' + (data.rsvpType || '[not selected]'));
-      lines.push('Needs CAA funding: ' + (data.needsFunding || '[not selected]'));
-      lines.push('');
-      lines.push('=== EMAIL BLURB ===');
-      lines.push(buildEmailBlurb(s));
-      lines.push('');
-      lines.push('=== INSTAGRAM CAPTION ===');
-      lines.push(buildInstagramCaption(s));
-      lines.push('');
-      lines.push('=== FACEBOOK POST ===');
-      lines.push(buildFacebookPost(s));
-      lines.push('');
-      lines.push('=== LINKEDIN POST ===');
-      lines.push(buildLinkedInPost(s));
-      lines.push('');
-      lines.push('— Generated via OC Cal Alumni Club Self-Serve Event Planner —');
-      var text = lines.join('\n');
+      var text = buildPacketText(s);
       var blob = new Blob([text], { type: 'text/plain' });
       var url = URL.createObjectURL(blob);
       var a = document.createElement('a');
@@ -793,6 +860,16 @@
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     };
+
+    var recordBtn = document.getElementById('recordEmailBtn');
+    if (recordBtn) {
+      recordBtn.onclick = function() {
+        var s = currentSummaryLines();
+        var subject = encodeURIComponent('Event Record: ' + s.name);
+        var body = encodeURIComponent(buildPacketText(s));
+        recordBtn.setAttribute('href', 'mailto:' + CLUB_RECORDS_EMAIL + '?subject=' + subject + '&body=' + body);
+      };
+    }
   }
 
   showStep(1);
